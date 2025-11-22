@@ -8,27 +8,9 @@
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>Solitaire Eleven</h1>
-            <p class="subtitle">Match cards that sum to 11.</p>
-        </header>
-
-        <div class="game-info">
-            <div class="info-item">
-                <span class="label">Cards Remaining:</span>
-                <span class="value" id="cardsRemaining">0</span>
-            </div>
-            <div class="info-item">
-                <span class="label">Pairs Removed:</span>
-                <span class="value" id="pairsRemoved">0</span>
-            </div>
-            <div class="info-item">
-                <span class="label">Stock:</span>
-                <span class="value" id="stockCount">0</span>
-            </div>
-        </div>
 
         <div class="game-board">
+            <div id="gameOverDisplay" class="game-over-display"></div>
             <div class="tableau">
                 <div class="pyramid-section">
                     <div class="pyramid" id="pyramid1"></div>
@@ -53,19 +35,16 @@
         <div class="controls">
             <button id="newGameBtn" class="btn btn-primary">New Game</button>
             <button id="undoBtn" class="btn btn-secondary">Undo</button>
-            <button id="hintBtn" class="btn btn-secondary">Hint</button>
         </div>
 
         <div class="rules">
             <h3>How to Play:</h3>
             <ul>
                 <li>Remove pairs of cards that sum to 11 (e.g., 1+10, 2+9, 3+8, 4+7, 5+6)</li>
-                <li>Click on two cards to select them. If they sum to 11, they're removed</li>
+                <li>Click on two or more cards to select them. If they sum to 11, they're removed</li>
                 <li>Clear all cards to win!</li>
             </ul>
         </div>
-
-        <div id="message" class="message"></div>
     </div>
 
     <script src="script.js"></script>

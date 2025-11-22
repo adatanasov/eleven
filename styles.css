@@ -23,51 +23,6 @@ body {
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
-header {
-    text-align: center;
-    margin-bottom: 30px;
-}
-
-h1 {
-    color: #667eea;
-    font-size: 2.5em;
-    margin-bottom: 10px;
-}
-
-.subtitle {
-    color: #666;
-    font-size: 1.1em;
-}
-
-.game-info {
-    display: flex;
-    justify-content: center;
-    gap: 40px;
-    margin-bottom: 30px;
-    padding: 20px;
-    background: #f8f9fa;
-    border-radius: 10px;
-}
-
-.info-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-}
-
-.label {
-    color: #666;
-    font-size: 0.9em;
-    font-weight: 600;
-}
-
-.value {
-    color: #667eea;
-    font-size: 1.8em;
-    font-weight: bold;
-}
-
 .game-board {
     margin-bottom: 30px;
     min-height: 750px;
@@ -103,7 +58,7 @@ h1 {
     flex-direction: column;
     align-items: center;
     gap: 8px;
-    margin-top: 138px;
+    margin-top: 130px;
 }
 
 .pyramid-row {
@@ -113,10 +68,10 @@ h1 {
 }
 
 .deck-section {
-    display: flex;
-    justify-content: center;
-    gap: 60px;
-    padding: 20px;
+	position: relative;
+	top: -50px;
+	width: 200px;
+	left: 290px;
 }
 
 .deck-container {
@@ -134,7 +89,7 @@ h1 {
 
 .deck-back {
     aspect-ratio: 2 / 3;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #575050 0%, #ae0303 100%);
     border: 2px solid #fff;
     border-radius: 8px;
     display: flex;
@@ -158,6 +113,11 @@ h1 {
     cursor: not-allowed;
 }
 
+.deck-stack.disabled {
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
 .discard-pile {
     width: 80px;
     min-height: 130px;
@@ -171,7 +131,7 @@ h1 {
 .card {
     aspect-ratio: 2 / 3;
     background: white;
-    border: 2px solid #ddd;
+    border: 2px solid #c8c8c8;
     border-radius: 8px;
     cursor: pointer;
     display: flex;
@@ -369,6 +329,16 @@ h1 {
 
 .rules li {
     margin-bottom: 8px;
+}
+
+.game-over-display {
+	position: relative;
+	font-size: 3em;
+	font-weight: bold;
+	color: #e74c3c;
+	top: 367px;
+	z-index: 11111;
+	left: 234px;
 }
 
 /* Responsive design */

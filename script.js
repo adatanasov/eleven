@@ -27,13 +27,13 @@ class SolitaireEleven {
         this.pairsRemoved = 0;
         this.history = [];
         this.gameWon = false;
+        this.gameOver = false;
         
-        this.messagedDiv = document.getElementById('message');
         this.newGameBtn = document.getElementById('newGameBtn');
         this.undoBtn = document.getElementById('undoBtn');
-        this.hintBtn = document.getElementById('hintBtn');
         this.deckStack = document.getElementById('deckStack');
         this.discardPileEl = document.getElementById('discardPile');
+        this.gameOverDisplay = document.getElementById('gameOverDisplay');
         
         this.setupEventListeners();
         this.startNewGame();
@@ -42,7 +42,6 @@ class SolitaireEleven {
     setupEventListeners() {
         this.newGameBtn.addEventListener('click', () => this.startNewGame());
         this.undoBtn.addEventListener('click', () => this.undo());
-        this.hintBtn.addEventListener('click', () => this.showHint());
         this.deckStack.addEventListener('click', () => this.drawFromDeck());
     }
 
@@ -62,7 +61,7 @@ class SolitaireEleven {
         this.pairsRemoved = 0;
         this.history = [];
         this.gameWon = false;
-        this.messagedDiv.textContent = '';
+        this.gameOver = false;
         
         // Draw the first card from the deck
         if (this.deck.length > 0) {
@@ -193,8 +192,16 @@ class SolitaireEleven {
         this.renderPyramid(this.pyramids[0], 'pyramid1', PYRAMID_STRUCTURE);
         this.renderPyramid(this.pyramids[1], 'pyramid2', PYRAMID2_STRUCTURE);
         this.renderPyramid(this.pyramids[2], 'pyramid3', PYRAMID_STRUCTURE);
+        this.renderGameOverDisplay();
         this.renderDeck();
-        this.updateInfo();
+    }
+
+    renderGameOverDisplay() {
+        if (this.gameOver) {
+            this.gameOverDisplay.textContent = 'GAME OVER';
+        } else {
+            this.gameOverDisplay.textContent = '';
+        }
     }
 
     renderPyramid(pyramid, elementId, structure) {
@@ -267,7 +274,6 @@ class SolitaireEleven {
 
     selectCard(card, metadata) {
         if (this.gameWon) {
-            this.showMessage('You won! Start a new game.', 'success');
             return;
         }
         
@@ -279,10 +285,10 @@ class SolitaireEleven {
         }
         
         this.selectedCards.push(card);
-        this.checkMatch();
+        this.checkMatch(card, metadata);
     }
 
-    checkMatch() {
+    checkMatch(selectedCard = null, metadata = null) {
         // Calculate sum of all selected cards
         const sum = this.selectedCards.reduce((total, card) => {
             return total + RANK_VALUES[card.rank];
@@ -292,6 +298,10 @@ class SolitaireEleven {
         if (sum === 11) {
             this.saveToHistory();
             
+            // Check if ANY of the selected cards was from the discard pile
+            const discardTopCard = this.discardPileCards.length > 0 ? this.discardPileCards[this.discardPileCards.length - 1] : null;
+            const wasFromDiscard = this.selectedCards.some(card => discardTopCard && card.id === discardTopCard.id);
+            
             // Remove all selected cards
             this.selectedCards.forEach(card => {
                 this.removeCard(card);
@@ -299,21 +309,25 @@ class SolitaireEleven {
             
             this.pairsRemoved++;
             this.selectedCards = [];
-            this.showMessage('Match found! Cards removed!', 'success');
+            
+            // If any card was from discard pile, draw a new one
+            if (wasFromDiscard && this.discardPileCards.length === 0 && this.deck.length > 0) {
+                const card = this.deck.pop();
+                this.discardPileCards.push(card);
+            }
             
             // Check win condition
             if (this.checkWinCondition()) {
                 this.gameWon = true;
-                this.showMessage('🎉 You won! All cards removed!', 'success');
+            } else if (this.checkGameOver()) {
+                this.gameOver = true;
             }
             
             this.render();
         } else if (sum > 11) {
-            // If sum exceeds 11, clear selection and show error
-            this.showMessage(`Sum is ${sum}. Too high! Click cards to try again.`, 'error');
+            // If sum exceeds 11, clear selection and render
             setTimeout(() => {
                 this.selectedCards = [];
-                this.messagedDiv.textContent = '';
                 this.render();
             }, 1500);
         } else {
@@ -353,20 +367,126 @@ class SolitaireEleven {
         return allPyramidsEmpty && deckAndDiscardEmpty;
     }
 
-    drawFromDeck() {
-        if (this.deck.length === 0) {
-            if (this.discardPileCards.length === 0) {
-                this.showMessage('No more cards!', 'error');
-                return;
-            }
-            // Reshuffle discard pile back to deck
-            this.deck = this.discardPileCards.reverse();
-            this.discardPileCards = [];
+    checkGameOver() {
+        // Game over if deck is empty and no matches possible
+        if (this.deck.length > 0) {
+            return false;
         }
         
+        // Check if any matches are possible with exposed cards and discard card
+        const exposedCards = [];
+        
+        // Get all exposed pyramid cards
+        [this.pyramids[0], this.pyramids[1], this.pyramids[2]].forEach(pyramid => {
+            Object.keys(pyramid).forEach(rowIdx => {
+                pyramid[rowIdx].forEach((cardData, colIdx) => {
+                    if (!cardData.removed && this.isCardExposed(pyramid, parseInt(rowIdx), colIdx)) {
+                        exposedCards.push(cardData.card);
+                    }
+                });
+            });
+        });
+        
+        // Add discard card
+        if (this.discardPileCards.length > 0) {
+            exposedCards.push(this.discardPileCards[this.discardPileCards.length - 1]);
+        }
+        
+        // Check if any combination of 2 or more cards sums to 11
+        for (let i = 0; i < exposedCards.length; i++) {
+            // Check all combinations starting from card i
+            for (let mask = 1; mask < (1 << exposedCards.length); mask++) {
+                if (!(mask & (1 << i))) continue; // Must include card i
+                
+                let sum = 0;
+                let cardCount = 0;
+                for (let j = 0; j < exposedCards.length; j++) {
+                    if (mask & (1 << j)) {
+                        sum += RANK_VALUES[exposedCards[j].rank];
+                        cardCount++;
+                    }
+                }
+                
+                // Check if sum is 11 and at least 2 cards
+                if (sum === 11 && cardCount >= 2) {
+                    return false;
+                }
+            }
+        }
+        
+        return true;
+    }
+
+    drawFromDeck() {
+        // Disable clicks when deck is empty
+        if (this.deck.length === 0) {
+            return;
+        }
+        
+        // If there's already a card in the discard pile, try to place it in the pyramid first
+        if (this.discardPileCards.length > 0) {
+            const cardToPlace = this.discardPileCards[this.discardPileCards.length - 1];
+            const emptyPosition = this.findNextEmptyPosition();
+            
+            if (emptyPosition) {
+                // Place the card in the pyramid
+                const { pyramidIdx, rowIdx, colIdx } = emptyPosition;
+                this.pyramids[pyramidIdx][rowIdx][colIdx].card = cardToPlace;
+                this.pyramids[pyramidIdx][rowIdx][colIdx].removed = false;
+                this.discardPileCards.pop();
+                
+                // Draw the next card from the deck if available
+                if (this.deck.length > 0) {
+                    const card = this.deck.pop();
+                    this.discardPileCards.push(card);
+                }
+                
+                this.render();
+                return;
+            }
+        }
+        
+        // Otherwise, draw a new card from the deck
         const card = this.deck.pop();
         this.discardPileCards.push(card);
         this.render();
+    }
+
+    findNextEmptyPosition() {
+        // Correct order: Pack2-Row1, Pack1-Row1, Pack2-Row2, Pack3-Row1, Pack1-Row2, Pack2-Row3, Pack3-Row2, Pack1-Row3, Pack3-Row3, Pack1-Row4, Pack3-Row4, Pack1-Row5, Pack3-Row5
+        const order = [
+            { pyramidIdx: 1, rowIdx: 0 },  // Pack 2, Row 1
+            { pyramidIdx: 0, rowIdx: 0 },  // Pack 1, Row 1
+            { pyramidIdx: 1, rowIdx: 1 },  // Pack 2, Row 2
+            { pyramidIdx: 2, rowIdx: 0 },  // Pack 3, Row 1
+            { pyramidIdx: 0, rowIdx: 1 },  // Pack 1, Row 2
+            { pyramidIdx: 1, rowIdx: 2 },  // Pack 2, Row 3
+            { pyramidIdx: 2, rowIdx: 1 },  // Pack 3, Row 2
+            { pyramidIdx: 0, rowIdx: 2 },  // Pack 1, Row 3
+            { pyramidIdx: 2, rowIdx: 2 },  // Pack 3, Row 3
+            { pyramidIdx: 0, rowIdx: 3 },  // Pack 1, Row 4
+            { pyramidIdx: 2, rowIdx: 3 },  // Pack 3, Row 4
+            { pyramidIdx: 0, rowIdx: 4 },  // Pack 1, Row 5
+            { pyramidIdx: 2, rowIdx: 4 },  // Pack 3, Row 5
+        ];
+        
+        for (let position of order) {
+            const { pyramidIdx, rowIdx } = position;
+            const pyramid = this.pyramids[pyramidIdx];
+            const rowStructure = pyramidIdx === 1 ? PYRAMID2_STRUCTURE : PYRAMID_STRUCTURE;
+            
+            // Check if this row exists and iterate through its columns
+            if (pyramid[rowIdx]) {
+                for (let colIdx = 0; colIdx < rowStructure[rowIdx][0]; colIdx++) {
+                    const cardData = pyramid[rowIdx][colIdx];
+                    if (cardData && cardData.removed) {
+                        return { pyramidIdx, rowIdx, colIdx };
+                    }
+                }
+            }
+        }
+        
+        return null; // No empty positions found
     }
 
     renderDeck() {
@@ -374,8 +494,10 @@ class SolitaireEleven {
         
         if (this.deck.length === 0) {
             deckBackEl.classList.add('empty');
+            this.deckStack.classList.add('disabled');
         } else {
             deckBackEl.classList.remove('empty');
+            this.deckStack.classList.remove('disabled');
         }
         
         deckBackEl.textContent = this.deck.length > 0 ? `${this.deck.length}` : 'Empty';
@@ -389,54 +511,8 @@ class SolitaireEleven {
         }
     }
 
-    showHint() {
-        if (this.gameWon) {
-            return;
-        }
-        
-        // Collect all exposed cards
-        const exposedCards = this.getExposedCards();
-        
-        // Add discard pile top card
-        if (this.discardPileCards.length > 0) {
-            exposedCards.push(this.discardPileCards[this.discardPileCards.length - 1]);
-        }
-        
-        // Find a match
-        for (let i = 0; i < exposedCards.length; i++) {
-            for (let j = i + 1; j < exposedCards.length; j++) {
-                const val1 = RANK_VALUES[exposedCards[i].rank];
-                const val2 = RANK_VALUES[exposedCards[j].rank];
-                
-                if (val1 + val2 === 11) {
-                    this.showMessage('Hint: A match exists!', 'info');
-                    return;
-                }
-            }
-        }
-        
-        this.showMessage('No more matches available.', 'error');
-    }
-
-    getExposedCards() {
-        const exposed = [];
-        
-        [this.pyramids[0], this.pyramids[1], this.pyramids[2]].forEach(pyramid => {
-            Object.keys(pyramid).forEach(rowIdx => {
-                pyramid[rowIdx].forEach((cardData, colIdx) => {
-                    if (!cardData.removed && this.isCardExposed(pyramid, parseInt(rowIdx), colIdx)) {
-                        exposed.push(cardData.card);
-                    }
-                });
-            });
-        });
-        
-        return exposed;
-    }
-
     undo() {
         if (this.history.length === 0) {
-            this.showMessage('Nothing to undo.', 'error');
             return;
         }
         
@@ -446,8 +522,8 @@ class SolitaireEleven {
         this.discardPileCards = previousState.discardPileCards;
         this.pairsRemoved = previousState.pairsRemoved;
         this.gameWon = false;
+        this.gameOver = false;
         this.selectedCards = [];
-        this.showMessage('Move undone!', 'info');
         this.render();
     }
 
@@ -458,18 +534,6 @@ class SolitaireEleven {
             discardPileCards: [...this.discardPileCards],
             pairsRemoved: this.pairsRemoved
         });
-    }
-
-    updateInfo() {
-        const remaining = this.getExposedCards().length + this.discardPileCards.length;
-        document.getElementById('cardsRemaining').textContent = remaining;
-        document.getElementById('pairsRemoved').textContent = this.pairsRemoved;
-        document.getElementById('stockCount').textContent = this.deck.length + this.discardPileCards.length;
-    }
-
-    showMessage(text, className) {
-        this.messagedDiv.textContent = text;
-        this.messagedDiv.className = `message ${className}`;
     }
 }
 
