@@ -63,16 +63,51 @@ class SolitaireEleven {
         this.history = [];
         this.gameWon = false;
         this.messagedDiv.textContent = '';
+        
+        // Draw the first card from the deck
+        if (this.deck.length > 0) {
+            const firstCard = this.deck.pop();
+            this.discardPileCards.push(firstCard);
+        }
+        
         this.render();
     }
 
     createDeck() {
         const deck = [];
+        // Create 52 random cards from A-10
+        // Target: total sum divisible by 11
+        // Strategy: create 51 random cards, then add the final card to make sum divisible by 11
+        
+        for (let i = 0; i < 51; i++) {
+            const randomRank = RANKS[Math.floor(Math.random() * RANKS.length)];
+            const randomSuit = SUITS[Math.floor(Math.random() * SUITS.length)];
+            deck.push({ rank: randomRank, suit: randomSuit, id: Math.random() });
+        }
+        
+        // Calculate current sum
+        let currentSum = 0;
+        for (let card of deck) {
+            currentSum += RANK_VALUES[card.rank];
+        }
+        
+        // Calculate what value we need for the 52nd card to make sum divisible by 11
+        const remainder = currentSum % 11;
+        let neededValue = (11 - remainder) % 11;
+        
+        // Find a rank with that value
+        let finalRank = 'A'; // default to Ace (value 1)
         for (let rank of RANKS) {
-            for (let suit of SUITS) {
-                deck.push({ rank, suit, id: Math.random() });
+            if (RANK_VALUES[rank] === neededValue) {
+                finalRank = rank;
+                break;
             }
         }
+        
+        // Add the final card
+        const finalSuit = SUITS[Math.floor(Math.random() * SUITS.length)];
+        deck.push({ rank: finalRank, suit: finalSuit, id: Math.random() });
+        
         return deck;
     }
 
